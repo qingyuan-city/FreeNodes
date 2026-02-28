@@ -1,0 +1,72 @@
+name: 🔄 同步FreeNodes项目并推送特定文件到team仓库
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # ---------- 同步上游 FreeNodes ----------
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 获取完整历史，便于后续操作
+
+      - name: 配置 Git 用户信息
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 添加上游仓库并获取更新
+        run: |
+          # 如果之前存在 upstream remote，先移除（新环境通常没有，但安全处理）
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/shuaidaoya/FreeNodes.git
+          git fetch upstream
+
+      - name: 用上游文件覆盖所有同名文件（保留本地新增文件）
+        run: |
+          git checkout main
+          # 将上游所有文件检出到工作区（覆盖本地已有文件，但不删除本地独有的文件）
+          git checkout upstream/main -- .
+          # 将所有变更（包括上游文件和本地新增文件）添加到暂存区
+          git add .
+          # 提交合并结果（如果没有变更，git commit 会失败，所以用条件判断）
+          git diff --staged --quiet || git commit -m "chore: 同步上游更新，保留本地新增文件"
+
+      - name: 推送更改到远程仓库
+        run: git push origin main
+
+      # ---------- 推送指定文件到 team 仓库 ----------
+      - name: 检出目标仓库 (team)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/team
+          token: ${{ secrets.QINGYUAN_PAT }}   # 需提前在仓库 Secrets 中设置
+          path: target
+
+      - name: 复制文件到目标仓库
+        run: |
+          cp nodes/all.yaml target/ || echo "all.yaml not found, skipping"
+          cp nodes/base64.txt target/ || echo "base64.txt not found, skipping"
+          cp nodes/base64.txt target/auto.txt || echo "base64.txt not found, skipping (auto)"
+          cp nodes/history.yaml target/ || echo "history.yaml not found, skipping"
+          cp nodes/mihomo.yaml target/ || echo "mihomo.yaml not found, skipping"
+
+      - name: 提交并推送到 team 仓库
+        run: |
+          cd target
+          # 注意：全局配置已经生效，此处无需重复配置，但保留也无妨
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Sync files from ${{ github.repository }}"
+            git push
+          fi
