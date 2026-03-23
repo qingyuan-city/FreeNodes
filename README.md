@@ -1,4 +1,4 @@
-# 🚀 FreeNodes
+# 🚀 FreeNodes-项目暂时停更1-2个月
 
 [![GitHub stars](https://img.shields.io/github/stars/shuaidaoya/FreeNodes?style=flat-square)](https://github.com/shuaidaoya/FreeNodes/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/shuaidaoya/FreeNodes?style=flat-square)](https://github.com/shuaidaoya/FreeNodes/network)
